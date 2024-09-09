@@ -12,8 +12,6 @@ template Loan
     bank: Party -- The party that is lending the money
     amount: Decimal -- The amount of money being borrowed
   where
-      -- Ensure that the loan amount is greater than zero
-    ensure amount > 0.0
     signatory borrower
     observer bank
 
