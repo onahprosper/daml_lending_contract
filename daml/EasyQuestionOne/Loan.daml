@@ -12,12 +12,6 @@ template Loan
     bank: Party -- The party that is lending the money
     amount: Decimal -- The amount of money being borrowed
   where
-    signatory borrower
-    observer bank
+    signatory borrower, bank
 
-    choice ApproveLoan: LoanId
-      with
-        approvedAmount: Decimal
-      controller bank
-      do
-        create this with amount = approvedAmount
+    
