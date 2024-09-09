@@ -1,0 +1,25 @@
+-- SPDX-License-Identifier: MIT
+
+module EasyQuestionOne.Loan where
+
+-- In other to avoid multiple instances, declare a loanId type
+type LoanId = ContractId Loan
+
+-- The Loan template represents a loan agreement between a borrower and a bank.
+template Loan
+  with
+    borrower: Party -- The party that is borrowing the money
+    bank: Party -- The party that is lending the money
+    amount: Decimal -- The amount of money being borrowed
+  where
+      -- Ensure that the loan amount is greater than zero
+    ensure amount > 0.0
+    signatory borrower
+    observer bank
+
+    choice ApproveLoan: LoanId
+      with
+        approvedAmount: Decimal
+      controller bank
+      do
+        create this with amount = approvedAmount
