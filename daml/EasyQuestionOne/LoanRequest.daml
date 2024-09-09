@@ -1,0 +1,26 @@
+-- SPDX-License-Identifier: MIT
+
+module EasyQuestionOne.LoanRequest where
+import EasyQuestionOne.Loan
+
+-- In other to avoid multiple instances, declare a loanRequestId type
+type LoanRequestId = ContractId LoanRequest
+
+-- The LoanRequest template represents a loan request made by a borrower to a bank.
+template LoanRequest
+  with
+    borrower: Party -- The party that is borrowing the money
+    bank: Party -- The party that is lending the money
+    amount: Decimal -- The amount of money being borrowed
+  where
+      -- Ensure that the loan amount is greater than zero
+    ensure amount > 0.0
+    signatory borrower
+    observer bank
+
+    choice ApproveRequest: ContractId Loan
+      with
+        approvedAmount: Decimal
+      controller bank
+      do
+        create Loan with ..
