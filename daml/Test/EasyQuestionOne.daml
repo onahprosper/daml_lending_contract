@@ -1,0 +1,41 @@
+module Test.EasyQuestionOne where
+
+import Daml.Script
+import EasyQuestionOne.LoanRequest
+import EasyQuestionOne.Loan
+
+data OnboardBorrower =
+  OnboardBorrower with
+    loanRequestRole : ContractId LoanRequest
+    borrowerRole : ContractId Loan
+
+data Parties = Parties with
+  alice : Party
+  bank : Party
+
+allocateParties : Script Parties
+allocateParties = do
+    alice <- allocateParty "Alice"
+    bank <- allocateParty "Goldman Sachs"
+    pure Parties{..}
+
+onboard : Parties -> Script OnboardBorrower
+onboard Parties{..} = do
+    loanRequestRole <- submit alice do
+      createCmd LoanRequest with
+        borrower = alice
+        bank = bank
+        amount = 1000.0
+
+    borrowerRole <- submit bank do
+      exerciseCmd loanRequestRole ApproveRequest with
+        approvedAmount = 1000.0
+
+    pure OnboardBorrower{..}
+
+-- Add the test script here
+testScript : Script ()
+testScript = do
+  parties <- allocateParties
+  OnboardBorrower{..} <- onboard parties
+  pure ()
