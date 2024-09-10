@@ -1,0 +1,36 @@
+-- SPDX-License-Identifier: MIT
+
+module MediumQuestionTwo.Token where
+
+import DA.Map qualified as M
+import MediumQuestionTwo.LoanLimit (LoanLimit)
+
+template Token
+  with
+    issuer : Party
+    holder : Party
+    amount : Decimal
+    loanLimitCid : ContractId LoanLimit  -- The contract ID of the `LoanLimit` contract associated with this token.
+  where
+    signatory issuer
+    observer holder
+
+    choice Mint : ContractId Token
+      with
+        additionalAmount : Decimal -- The amount to mint
+      controller issuer, holder -- The issuer and the holder can mint tokens
+      do
+        assertMsg "Mint amount must be positive" (additionalAmount > 0.0) -- The mint amount must be positive
+        -- Fetch the `LoanLimit` contract
+        loanLimit <- fetch loanLimitCid 
+        -- Get the borrower's limit from the `LoanLimit` contract
+        let borrowerLimit = M.lookup holder loanLimit.borrowerLimits 
+        case borrowerLimit of
+        -- If the borrower's limit is not found, throw an error
+         None -> error "Borrower limit not found"
+        -- If the borrower's limit is found, check if the new amount exceeds the limit
+         Some limit -> do
+            let newAmount = amount + additionalAmount
+            assertMsg "New amount exceeds borrower's limit" (newAmount <= limit) -- Check if the new amount exceeds the borrower's limit
+            -- Create a new `Token` contract with the updated amount
+            create this with amount = newAmount
