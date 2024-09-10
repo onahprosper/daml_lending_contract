@@ -3,7 +3,7 @@
 module EasyQuestionOne.LoanRequest where
 import EasyQuestionOne.Loan
 
--- In other to avoid multiple instances, declare a loanRequestId type
+-- In order to avoid multiple instances, declare a loanRequestId type
 type LoanRequestId = ContractId LoanRequest
 
 -- The LoanRequest template represents a loan request made by a borrower to a bank.
@@ -23,4 +23,10 @@ template LoanRequest
         approvedAmount: Decimal
       controller bank
       do
-        create Loan with ..
+        -- Ensure the approved amount does not exceed the requested amount
+        if approvedAmount > amount
+        then error "Approved amount exceeds requested amount"
+        else do
+            -- Create the Loan contract
+            create Loan with ..
+            
