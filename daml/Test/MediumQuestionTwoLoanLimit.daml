@@ -6,9 +6,8 @@ import MediumQuestionTwo.LoanLimit
 import DA.Assert ((===))
 import DA.Map qualified as M
 
-data OnboardLoanLimit =
-  OnboardLoanLimit with
-    loanLimitRole : ContractId LoanLimit
+data OnboardLoanLimit = OnboardLoanLimit with
+  loanLimitRole : ContractId LoanLimit
 
 data Parties = Parties with
   bank : Party
@@ -17,86 +16,73 @@ data Parties = Parties with
 
 allocateParties : Script Parties
 allocateParties = do
-    bank <- allocateParty "Goldman Sachs"
-    borrower <- allocateParty "Borrower"
-    cb <- allocateParty "Central Bank"
-    pure Parties{..}
+  bank <- allocateParty "Goldman Sachs"
+  borrower <- allocateParty "Borrower"
+  cb <- allocateParty "Central Bank"
+  pure Parties{..}
 
-onboard : Parties -> Script OnboardLoanLimit
-onboard Parties{..} = do
-    -- Create a LoanLimit contract
-    loanLimitRole <- submit cb do
-      createCmd LoanLimit with
-        bank = bank
-        cb = cb
-        maximumLimit = 10000.0
-        borrowerLimits = M.empty -- allowing bank to set the borrower limits themselves
+setupInitialContract : Parties -> Script OnboardLoanLimit
+setupInitialContract Parties{..} = do
+  loanLimitRole <- submit cb do
+    createCmd LoanLimit with
+      bank = bank
+      cb = cb
+      maximumLimit = 10000.0
+      borrowerLimits = M.empty
 
-    -- Check if the LoanLimit contract has been created
-    Some loanLimit <- queryContractId bank loanLimitRole
-    debug $ "LoanLimit found: " <> show loanLimit
-    loanLimit.maximumLimit === 10000.0
-    M.lookup borrower loanLimit.borrowerLimits === None
+  pure OnboardLoanLimit{..}
 
-    -- Update the LoanLimit
-    updatedLoanLimitRole <- submit bank do
-      exerciseCmd loanLimitRole UpdateLimit with
-        borrower = borrower
-        newLimit = 5000.0
+testSuccessfulOperations : Parties -> OnboardLoanLimit -> Script ()
+testSuccessfulOperations Parties{..} OnboardLoanLimit{..} = do
+  -- Check if the LoanLimit contract has been created
+  Some loanLimit <- queryContractId bank loanLimitRole
+  debug $ "LoanLimit found: " <> show loanLimit
+  loanLimit.maximumLimit === 10000.0
+  M.lookup borrower loanLimit.borrowerLimits === None
 
-    -- Check if the LoanLimit contract has been updated
-    Some updatedLoanLimit <- queryContractId bank updatedLoanLimitRole
-    debug $ "Updated LoanLimit found: " <> show updatedLoanLimit
-    M.lookup borrower updatedLoanLimit.borrowerLimits === Some 5000.0
+  -- Update the LoanLimit
+  updatedLoanLimitRole <- submit bank do
+    exerciseCmd loanLimitRole UpdateLimit with
+      borrower = borrower
+      newLimit = 5000.0
 
-    -- borrower should be able to see the limit also
-    Some updatedLoanLimitBorrower <- queryContractId borrower updatedLoanLimitRole
-    debug $ "Updated LoanLimit found: " <> show updatedLoanLimitBorrower
-    M.lookup borrower updatedLoanLimitBorrower.borrowerLimits === Some 5000.0
+  -- Check if the LoanLimit contract has been updated
+  Some updatedLoanLimit <- queryContractId bank updatedLoanLimitRole
+  debug $ "Updated LoanLimit found: " <> show updatedLoanLimit
+  M.lookup borrower updatedLoanLimit.borrowerLimits === Some 5000.0
 
-    -- Update the maximum limit
-    updatedMaxLimitRole <- submit cb do
-      exerciseCmd updatedLoanLimitRole UpdateMaxLimit with
-        newMaxLimit = 15000.0
+  -- borrower should be able to see the limit also
+  Some updatedLoanLimitBorrower <- queryContractId borrower updatedLoanLimitRole
+  debug $ "Updated LoanLimit found: " <> show updatedLoanLimitBorrower
+  M.lookup borrower updatedLoanLimitBorrower.borrowerLimits === Some 5000.0
 
-    -- Check if the maximum limit has been updated
-    Some updatedMaxLimit <- queryContractId cb updatedMaxLimitRole
-    debug $ "Updated Max Limit found: " <> show updatedMaxLimit
-    updatedMaxLimit.maximumLimit === 15000.0
+  -- Update the maximum limit
+  updatedMaxLimitRole <- submit cb do
+    exerciseCmd updatedLoanLimitRole UpdateMaxLimit with
+      newMaxLimit = 15000.0
 
-    -- Return the LoanLimit contract
-    pure OnboardLoanLimit{..}
+  -- Check if the maximum limit has been updated
+  Some updatedMaxLimit <- queryContractId cb updatedMaxLimitRole
+  debug $ "Updated Max Limit found: " <> show updatedMaxLimit
+  updatedMaxLimit.maximumLimit === 15000.0
 
-testExceedingMaxLimit : Parties -> Script ()
-testExceedingMaxLimit Parties{..} = do
-    -- Create a LoanLimit contract
-    loanLimitRole <- submit cb do
-      createCmd LoanLimit with
-        bank = bank
-        cb = cb
-        maximumLimit = 10000.0
-        borrowerLimits = M.empty
-    
-    -- Check if the LoanLimit contract has been created
-    Some loanLimit <- queryContractId bank loanLimitRole
-    debug $ "LoanLimit found: " <> show loanLimit
-    loanLimit.maximumLimit === 10000.0
+testFailedOperations : Parties -> OnboardLoanLimit -> Script ()
+testFailedOperations Parties{..} OnboardLoanLimit{..} = do
+  -- Attempt to update the LoanLimit with an amount exceeding the maximum limit
+  submitMustFail bank do
+    exerciseCmd loanLimitRole UpdateLimit with
+      borrower = borrower
+      newLimit = 20000.0  -- This exceeds the maximum limit of 10000
 
-    -- Attempt to update the LoanLimit with an amount exceeding the maximum limit
-    submitMustFail bank do
-      exerciseCmd loanLimitRole UpdateLimit with
-        borrower = borrower
-        newLimit = 20000.0  -- This exceeds the maximum limit of 10000
-    
-    -- Check if the LoanLimit contract has not been updated
-    Some loanLimit <- queryContractId bank loanLimitRole
-    debug $ "LoanLimit found: " <> show loanLimit
-    M.lookup borrower loanLimit.borrowerLimits === None
+  -- Attempt to update the maximum limit by a non-central bank party
+  submitMustFail bank do
+    exerciseCmd loanLimitRole UpdateMaxLimit with
+      newMaxLimit = 15000.0
 
--- Add the test script here
 testScript : Script ()
 testScript = do
   parties <- allocateParties
-  OnboardLoanLimit{..} <- onboard parties
-  testExceedingMaxLimit <- onboard parties
+  onboardLoanLimit <- setupInitialContract parties
+  testSuccessfulOperations parties onboardLoanLimit
+  testFailedOperations parties onboardLoanLimit
   pure ()
