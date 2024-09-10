@@ -1,0 +1,30 @@
+-- SPDX-License-Identifier: MIT
+module MediumQuestionTwo.LoanRequest where
+
+import MediumQuestionTwo.LoanLimit
+import MediumQuestionTwo.Token qualified as Token
+import MediumQuestionTwo.Loan
+
+template LoanRequest
+  with
+    borrower : Party
+    bank : Party
+    requestedAmount : Decimal
+    loanLimitCid : ContractId LoanLimit
+    tokenCid : ContractId Token.Token
+  where
+    signatory borrower
+    observer bank
+
+    choice Approve : ContractId Loan
+      controller bank
+      do
+        loanLimit <- fetch loanLimitCid
+        assertMsg "Requested amount exceeds bank's limit" (requestedAmount <= loanLimit.maximumLimit)
+        create Loan with
+          borrower = borrower
+          bank = bank
+          approvedAmount = requestedAmount
+          remainingAmount = requestedAmount
+          loanLimitCid = loanLimitCid
+          tokenCid = tokenCid
