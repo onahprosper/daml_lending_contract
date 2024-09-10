@@ -1,0 +1,55 @@
+-- SPDX-License-Identifier: UNLICENSED
+module Test.MediumQuestionTwoLoanLimit where
+
+import Daml.Script
+import MediumQuestionTwo.LoanLimit
+import DA.Assert ((===))
+import DA.Map qualified as M
+
+data OnboardLoanLimit =
+  OnboardLoanLimit with
+    loanLimitRole : ContractId LoanLimit
+
+data Parties = Parties with
+  bank : Party
+  borrower : Party
+
+allocateParties : Script Parties
+allocateParties = do
+    bank <- allocateParty "Goldman Sachs"
+    borrower <- allocateParty "Borrower"
+    pure Parties{..}
+
+onboard : Parties -> Script OnboardLoanLimit
+onboard Parties{..} = do
+    -- Create a LoanLimit contract
+    loanLimitRole <- submit bank do
+      createCmd LoanLimit with
+        bank = bank
+        borrowerLimits = M.empty
+
+    -- Check if the LoanLimit contract has been created
+    Some loanLimit <- queryContractId bank loanLimitRole
+    debug $ "LoanLimit found: " <> show loanLimit
+    M.lookup borrower loanLimit.borrowerLimits === None
+
+    -- Update the LoanLimit
+    updatedLoanLimitRole <- submit bank do
+      exerciseCmd loanLimitRole UpdateLimit with
+        borrower = borrower
+        newLimit = 5000
+
+    -- Check if the LoanLimit contract has been updated
+    Some updatedLoanLimit <- queryContractId bank updatedLoanLimitRole
+    debug $ "Updated LoanLimit found: " <> show updatedLoanLimit
+    M.lookup borrower updatedLoanLimit.borrowerLimits === Some 5000
+
+    -- Return the LoanLimit contract
+    pure OnboardLoanLimit{..}
+
+-- Add the test script here
+testScript : Script ()
+testScript = do
+  parties <- allocateParties
+  OnboardLoanLimit{..} <- onboard parties
+  pure ()
