@@ -1,0 +1,47 @@
+-- SPDX-License-Identifier: MIT
+module MediumQuestionTwo.Loan where
+
+import DA.Map qualified as M
+import MediumQuestionTwo.LoanLimit
+import MediumQuestionTwo.Token
+import MediumQuestionTwo.Token qualified as Token
+
+type TokenId = ContractId Token
+
+template Loan
+  with
+    borrower : Party
+    bank : Party
+    approvedAmount : Decimal -- The approved loan amount
+    remainingAmount : Decimal -- The remaining loan amount
+    loanLimitCid : ContractId LoanLimit -- The contract ID of the `LoanLimit` contract associated with this loan
+    tokenCid : TokenId -- The contract ID of the `Token` contract associated with this loan
+  where
+    signatory borrower
+
+    ensure remainingAmount <= approvedAmount
+
+    choice Disburse : ContractId Loan
+      with
+        disburseAmount : Decimal
+      controller bank, borrower
+      do
+        assertMsg "Disburse amount must be positive" (disburseAmount > 0.0)
+        assertMsg "Disburse amount exceeds remaining amount" (disburseAmount <= remainingAmount)
+
+        loanLimit <- fetch loanLimitCid
+        let borrowerLimit = M.lookup borrower loanLimit.borrowerLimits
+        let bankLimit = loanLimit.maximumLimit
+
+        case borrowerLimit of
+          None -> error "Borrower limit not found"
+          Some limit -> do
+            let totalDisbursed = approvedAmount - remainingAmount + disburseAmount
+            assertMsg "Total disbursed amount would exceed borrower's limit" (totalDisbursed <= limit)
+            assertMsg "Total disbursed amount would exceed bank's limit" (totalDisbursed <= bankLimit)
+
+            newTokenCid <- exercise tokenCid Token.Mint with additionalAmount = disburseAmount
+
+            create this with
+              remainingAmount = remainingAmount - disburseAmount
+              tokenCid = newTokenCid
