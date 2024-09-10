@@ -8,16 +8,25 @@ import DA.Map qualified as M
 template LoanLimit
   with
     bank : Party
-    borrowerLimits : Map Party Int
+    cb : Party -- this party serves as the central bank
+    maximumLimit : Decimal
+    borrowerLimits : Map Party Decimal 
   where
-    signatory bank
-    observer (M.keys borrowerLimits)
+    signatory cb
+    observer bank, (M.keys borrowerLimits) -- borrower should be able to see their limit from cb
+    choice UpdateMaxLimit : ContractId LoanLimit
+      with
+        newMaxLimit : Decimal
+      controller cb
+      do
+        create this with maximumLimit = newMaxLimit
     choice UpdateLimit : ContractId LoanLimit
       with
         borrower : Party
-        newLimit : Int
+        newLimit : Decimal
       controller bank
       do
+        assertMsg "New limit is greater than maximum limit" (newLimit <= maximumLimit)
         let updatedLimits = M.insert borrower newLimit borrowerLimits
         create this with borrowerLimits = updatedLimits
     
