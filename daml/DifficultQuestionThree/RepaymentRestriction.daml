@@ -1,0 +1,27 @@
+module DifficultQuestionThree.RepaymentRestriction where
+
+template RepaymentRestriction
+    with
+        bank : Party
+        borrower : Party
+        minRepaymentAmount : Decimal  -- Minimum amount required for each repayment
+    where
+        signatory bank
+        observer borrower  -- Borrower needs to observe the repayment restriction
+
+
+    -- A choice to check if a repayment amount meets the minimum requirement
+        choice ValidateRepayment : Bool
+            with
+                repaymentAmount : Decimal
+            controller borrower
+            do
+                assertMsg "Repayment amount is less than the required minimum." (repaymentAmount >= minRepaymentAmount)
+                return True
+
+        choice UpdateMinRepayment : ContractId RepaymentRestriction
+            with
+                newMinRepaymentAmount : Decimal
+            controller bank
+            do
+            create this with minRepaymentAmount = newMinRepaymentAmount

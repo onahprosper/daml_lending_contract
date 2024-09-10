@@ -1,0 +1,30 @@
+module Test.RepaymentRestrictionTest where
+
+import Daml.Script
+import DifficultQuestionThree.RepaymentRestriction
+
+testRepaymentRestriction : Script ()
+testRepaymentRestriction = do
+    -- Setup parties
+    bank <- allocateParty "Bank"
+    borrower <- allocateParty "Borrower"
+
+    -- Create the RepaymentRestriction contract with a minimum repayment amount of 100
+    repaymentRestrictionCid <- submit bank do
+        createCmd RepaymentRestriction with
+            bank = bank
+            borrower = borrower
+            minRepaymentAmount = 100.0
+
+    -- Borrower attempts a valid repayment of 150
+    isValidRepayment <- submit borrower do
+        exerciseCmd repaymentRestrictionCid ValidateRepayment with
+            repaymentAmount = 150.0
+    assert isValidRepayment
+
+    -- Borrower attempts an invalid repayment of 50 (less than the minimum)
+    submitMustFail borrower do
+        exerciseCmd repaymentRestrictionCid ValidateRepayment with
+            repaymentAmount = 50.0
+
+    return ()
