@@ -1,0 +1,23 @@
+-- SPDX-License-Identifier: MIT
+
+module MediumQuestionTwo.LoanLimit where
+
+import DA.Map (Map)  -- Import the Map type
+import DA.Map qualified as M
+
+template LoanLimit
+  with
+    bank : Party
+    borrowerLimits : Map Party Int
+  where
+    signatory bank
+    observer (M.keys borrowerLimits)
+    choice UpdateLimit : ContractId LoanLimit
+      with
+        borrower : Party
+        newLimit : Int
+      controller bank
+      do
+        let updatedLimits = M.insert borrower newLimit borrowerLimits
+        create this with borrowerLimits = updatedLimits
+    
