@@ -3,6 +3,7 @@ module Test.EasyQuestionOne where
 import Daml.Script
 import EasyQuestionOne.LoanRequest
 import EasyQuestionOne.Loan
+import DA.Assert ((===))
 
 data OnboardBorrower =
   OnboardBorrower with
@@ -21,16 +22,37 @@ allocateParties = do
 
 onboard : Parties -> Script OnboardBorrower
 onboard Parties{..} = do
+    -- Create a LoanRequest contract
     loanRequestRole <- submit alice do
       createCmd LoanRequest with
         borrower = alice
         bank = bank
         amount = 1000.0
 
+    -- Check if the LoanRequest contract has been created
+    Some loanRequest <- queryContractId alice loanRequestRole
+    debug $ "LoanRequest found: " <> show loanRequest
+    loanRequest.amount === 1000.0
+    loanRequest.borrower === alice
+    loanRequest.bank === bank
+
+    -- Approve the LoanRequest
     borrowerRole <- submit bank do
       exerciseCmd loanRequestRole ApproveRequest with
         approvedAmount = 1000.0
+    
+    -- Check if the Loan contract has been created
+    Some borrower <- queryContractId bank borrowerRole
+    debug $ "Borrower found: " <> show borrower
+    borrower.borrower === alice
+    borrower.bank === bank
+    borrower.amount === 1000.0
 
+    -- Check if the LoanRequest contract has been archived
+    None <- queryContractId alice loanRequestRole
+    debug "LoanRequest contract has been archived"
+
+    -- Return the LoanRequest and Loan contract
     pure OnboardBorrower{..}
 
 -- Add the test script here
