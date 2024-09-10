@@ -1,0 +1,34 @@
+-- SPDX-License-Identifier: MIT
+module DifficultQuestionThree.LoanRequest where
+
+import MediumQuestionTwo.LoanLimit
+import DifficultQuestionThree.Token (IouCid)
+import DifficultQuestionThree.Loan
+import DifficultQuestionThree.RepaymentRestriction
+
+template LoanRequest
+  with
+    borrower : Party
+    bank : Party
+    requestedAmount : Decimal
+    loanLimitCid : ContractId LoanLimit
+    tokenCid : IouCid
+    repaymentRestrictionCid : ContractId RepaymentRestriction
+  where
+    signatory borrower
+    observer bank
+
+    choice Approve : ContractId Loan
+      controller bank
+      do
+        loanLimit <- fetch loanLimitCid
+        assertMsg "Requested amount exceeds bank's limit" (requestedAmount <= loanLimit.maximumLimit)
+        create Loan with
+          borrower = borrower
+          bank = bank
+          approvedAmount = requestedAmount
+          remainingAmount = 0.0
+          totalRepaidAmount = 0.0
+          loanLimitCid = loanLimitCid
+          tokenCid = tokenCid
+          repaymentRestrictionCid = repaymentRestrictionCid
