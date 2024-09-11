@@ -63,6 +63,7 @@ template Loan
       controller borrower
       do
         assertMsg "Repayment amount must be positive" (repaymentAmount > 0.0)
+
         let sumOfAmountRepaid = totalRepaidAmount + repaymentAmount
         assertMsg "Repayment amount exceeds remaining amount" (sumOfAmountRepaid <= approvedAmount)
         restriction <- fetch repaymentRestrictionCid
@@ -77,13 +78,13 @@ template Loan
             newOwner = bank
         -- accept the transfer immediately and return the new Iou
         iouBank <- exercise iouTransferCid IouTransfer_Accept
-
+        
         create this with
             totalRepaidAmount = sumOfAmountRepaid
             remainingAmount = remainingAmount
             tokenCid = iouBank
-        
-    
+
+
     choice CloseAndUpdateUtilizedAmount : ()
         with
             amountChange : Decimal
