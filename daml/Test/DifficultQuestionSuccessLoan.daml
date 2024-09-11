@@ -1,16 +1,15 @@
 
 -- SPDX-License-Identifier: UNLICENSED
-module Test.DifficultQuestionThreeLoan where
+module Test.DifficultQuestionSuccessLoan where
 
 import Daml.Script
 import DifficultQuestionThree.Loan
 import DifficultQuestionThree.LoanRequest
 import DA.Assert ((===))
-import Test.SetupContracts (OnboardContracts(..), Parties(..), allocateParties, setupInitialContracts)
+import Test.DifficultQuestionSetupContracts (OnboardContracts(..), Parties(..), allocateParties, setupInitialContracts)
 
 testSuccessfulDisburse : Parties -> OnboardContracts -> Script ()
 testSuccessfulDisburse Parties{..} OnboardContracts{..} = do
-    debug $ "Successfull: Loan found: "
     Some loanRequest <- queryContractId borrower loanRequestCid
     loanRequest.borrower === borrower
     loanRequest.bank === bank
@@ -37,9 +36,7 @@ testSuccessfulDisburse Parties{..} OnboardContracts{..} = do
 
     Some loan <- queryContractId borrower newLoanCid
     loan.remainingAmount === 0.0
-    loan.approvedAmount === 5000.0
-    debug $ "Successfull: before final loan: " <> show loanRequestCid
-    
+    loan.approvedAmount === 5000.0    
 
     -- repayments 
     repaymentLoanCid <- submit borrower do

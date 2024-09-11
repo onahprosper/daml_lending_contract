@@ -5,7 +5,7 @@ import Daml.Script
 import DifficultQuestionThree.Loan
 import DifficultQuestionThree.LoanRequest
 import DA.Assert ((===))
-import Test.SetupContracts (OnboardContracts(..), Parties(..), allocateParties, setupInitialContracts)
+import Test.DifficultQuestionSetupContracts (OnboardContracts(..), Parties(..), allocateParties, setupInitialContracts)
 
 testPartialDisburseRepay : Parties -> OnboardContracts -> Script ()
 testPartialDisburseRepay Parties{..} OnboardContracts{..} = do
@@ -44,8 +44,13 @@ testPartialDisburseRepay Parties{..} OnboardContracts{..} = do
     repaymentLoanCid2 <- submit borrower do
         exerciseCmd repaymentLoanCid1 Repay with repaymentAmount = 2000.0
 
+    -- Attempt to repay zero amount
+    submitMustFail borrower do
+        exerciseCmd repaymentLoanCid2 Repay with repaymentAmount = 0.0
 
-
+  -- Attempt to repay more than the outstanding balance
+    submitMustFail borrower do
+        exerciseCmd repaymentLoanCid2 Repay with repaymentAmount = 6000.0
     -- Partial repayment
     repaymentLoanCid3 <- submit borrower do
         exerciseCmd repaymentLoanCid2 Repay with repaymentAmount = 2000.0

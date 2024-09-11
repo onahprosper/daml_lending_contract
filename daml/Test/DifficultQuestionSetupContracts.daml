@@ -1,8 +1,7 @@
 -- SPDX-License-Identifier: UNLICENSED
-module Test.SetupContracts where
+module Test.DifficultQuestionSetupContracts where
 
 import Daml.Script
--- import DifficultQuestionThree.Loan
 import DifficultQuestionThree.Token
 import DifficultQuestionThree.LoanLimit
 import DifficultQuestionThree.LoanRequest

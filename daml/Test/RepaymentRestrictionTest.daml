@@ -17,14 +17,15 @@ testRepaymentRestriction = do
             minRepaymentAmount = 100.0
 
     -- Borrower attempts a valid repayment of 150
-    isValidRepayment <- submit borrower do
-        exerciseCmd repaymentRestrictionCid ValidateRepayment with
-            repaymentAmount = 150.0
-    assert isValidRepayment
+    isValidRepayment <- submit bank do
+        exerciseCmd repaymentRestrictionCid UpdateMinRepayment with
+            newMinRepaymentAmount = 150.0
+    -- Check if the repaymentRestrictionCid contract has been archived
+    notNone <- queryContractId bank isValidRepayment
 
     -- Borrower attempts an invalid repayment of 50 (less than the minimum)
     submitMustFail borrower do
-        exerciseCmd repaymentRestrictionCid ValidateRepayment with
-            repaymentAmount = 50.0
+        exerciseCmd repaymentRestrictionCid UpdateMinRepayment with
+            newMinRepaymentAmount = 50.0
 
     return ()

@@ -31,7 +31,6 @@ onboard Parties{..} = do
 
     -- Check if the LoanRequest contract has been created
     Some loanRequest <- queryContractId alice loanRequestRole
-    debug $ "LoanRequest found: " <> show loanRequest
     loanRequest.amount === 1000.0
     loanRequest.borrower === alice
     loanRequest.bank === bank
@@ -43,14 +42,12 @@ onboard Parties{..} = do
     
     -- Check if the Loan contract has been created
     Some borrower <- queryContractId bank borrowerRole
-    debug $ "Borrower found: " <> show borrower
     borrower.borrower === alice
     borrower.bank === bank
     borrower.amount === 1000.0
 
     -- Check if the LoanRequest contract has been archived
     None <- queryContractId alice loanRequestRole
-    debug "LoanRequest contract has been archived"
 
     -- Return the LoanRequest and Loan contract
     pure OnboardBorrower{..}

@@ -36,7 +36,6 @@ testSuccessfulOperations : Parties -> OnboardLoanLimit -> Script ()
 testSuccessfulOperations Parties{..} OnboardLoanLimit{..} = do
   -- Check if the LoanLimit contract has been created
   Some loanLimit <- queryContractId bank loanLimitRole
-  debug $ "LoanLimit found: " <> show loanLimit
   loanLimit.maximumLimit === 10000.0
   M.lookup borrower loanLimit.borrowerLimits === None
 
@@ -48,12 +47,10 @@ testSuccessfulOperations Parties{..} OnboardLoanLimit{..} = do
 
   -- Check if the LoanLimit contract has been updated
   Some updatedLoanLimit <- queryContractId bank updatedLoanLimitRole
-  debug $ "Updated LoanLimit found: " <> show updatedLoanLimit
   M.lookup borrower updatedLoanLimit.borrowerLimits === Some 5000.0
 
   -- borrower should be able to see the limit also
   Some updatedLoanLimitBorrower <- queryContractId borrower updatedLoanLimitRole
-  debug $ "Updated LoanLimit found: " <> show updatedLoanLimitBorrower
   M.lookup borrower updatedLoanLimitBorrower.borrowerLimits === Some 5000.0
 
   -- Update the maximum limit
@@ -63,7 +60,6 @@ testSuccessfulOperations Parties{..} OnboardLoanLimit{..} = do
 
   -- Check if the maximum limit has been updated
   Some updatedMaxLimit <- queryContractId cb updatedMaxLimitRole
-  debug $ "Updated Max Limit found: " <> show updatedMaxLimit
   updatedMaxLimit.maximumLimit === 15000.0
 
 testFailedOperations : Parties -> OnboardLoanLimit -> Script ()
