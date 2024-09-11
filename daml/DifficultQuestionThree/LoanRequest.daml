@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MIT
 module DifficultQuestionThree.LoanRequest where
 
-import MediumQuestionTwo.LoanLimit
+import DifficultQuestionThree.LoanLimit
 import DifficultQuestionThree.Token (IouCid)
 import DifficultQuestionThree.Loan
 import DifficultQuestionThree.RepaymentRestriction
@@ -27,6 +27,7 @@ template LoanRequest
           borrower = borrower
           bank = bank
           approvedAmount = requestedAmount
+          amountDisbursed = 0.0
           remainingAmount = 0.0
           totalRepaidAmount = 0.0
           loanLimitCid = loanLimitCid

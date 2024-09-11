@@ -1,0 +1,42 @@
+-- SPDX-License-Identifier: MIT
+
+module DifficultQuestionThree.LoanLimit where
+
+import DA.Map (Map)  -- Import the Map type
+import DA.Map qualified as M
+
+template LoanLimit
+  with
+    bank : Party
+    cb : Party -- this party serves as the central bank
+    maximumLimit : Decimal
+    utilizedAmount : Decimal
+    borrowerLimits : Map Party Decimal 
+  where
+    signatory cb
+    observer bank, (M.keys borrowerLimits) -- borrower should be able to see their limit from cb
+    choice UpdateMaxLimit : ContractId LoanLimit
+      with
+        newMaxLimit : Decimal
+      controller cb
+      do
+        create this with maximumLimit = newMaxLimit
+    choice UpdateLimit : ContractId LoanLimit
+      with
+        borrower : Party
+        newLimit : Decimal
+      controller bank
+      do
+        assertMsg "New limit is greater than maximum limit" (newLimit <= maximumLimit)
+        let updatedLimits = M.insert borrower newLimit borrowerLimits
+        create this with borrowerLimits = updatedLimits
+    -- Update the utilized loan amount (called on disbursement and repayment)
+    choice UpdateUtilizedAmount : ContractId LoanLimit
+      with
+        amountChange : Decimal -- Positive for disbursement, negative for repayment
+      controller bank
+      do
+        let newUtilizedAmount = utilizedAmount + amountChange
+        assertMsg "Utilized amount exceeds maximum limit" (newUtilizedAmount <= maximumLimit)
+        debug $ "Utilized amount updated: " <> show newUtilizedAmount
+        create this with utilizedAmount = newUtilizedAmount

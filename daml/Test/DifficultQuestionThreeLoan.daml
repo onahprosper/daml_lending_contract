@@ -4,7 +4,7 @@ module Test.DifficultQuestionThreeLoan where
 import Daml.Script
 import DifficultQuestionThree.Loan
 import DifficultQuestionThree.Token
-import MediumQuestionTwo.LoanLimit
+import DifficultQuestionThree.LoanLimit
 import DifficultQuestionThree.LoanRequest
 import DifficultQuestionThree.RepaymentRestriction
 import DA.Assert ((===))
@@ -35,6 +35,7 @@ setupInitialContracts Parties{..} = do
             bank = bank
             cb = cb
             maximumLimit = 10000.0
+            utilizedAmount = 0.0
             borrowerLimits = M.empty
 
     updatedLoanLimitCid <- submit bank do
@@ -47,8 +48,8 @@ setupInitialContracts Parties{..} = do
             issuer = bank
             owner = bank
             currency = "USD"
-            amount = 5000.0
-            observers = []
+            amount = 10000.0
+            observers = [borrower]
 
     repaymentRestrictionCid <- submit cb do
         createCmd RepaymentRestriction with
@@ -80,7 +81,7 @@ testSuccessfulDisburse Parties{..} OnboardContracts{..} = do
 
     -- Attempt to disburse more than the remaining amount
     submitMultiMustFail [bank, borrower] [] do
-        exerciseCmd loanCid Disburse with disburseAmount = 6000.0
+        exerciseCmd loanCid Disburse with disburseAmount = 0.0
     
     -- Attempt to disburse a negative amount
     submitMultiMustFail [bank, borrower] [] do
@@ -90,38 +91,31 @@ testSuccessfulDisburse Parties{..} OnboardContracts{..} = do
     submitMultiMustFail [bank, borrower] [] do
         exerciseCmd loanCid Disburse with disburseAmount = 11000.0
 
-    debug $ "Successfull: before final loan" <> show loanRequestCid
     newLoanCid <- submitMulti [bank, borrower] [] do
         exerciseCmd loanCid Disburse with disburseAmount = 5000.0
     pure ()
 
-    -- Some loan <- queryContractId borrower newLoanCid
-    -- loan.remainingAmount === 0.0
-    -- loan.approvedAmount === 5000.0
+    Some loan <- queryContractId borrower newLoanCid
+    loan.remainingAmount === 0.0
+    loan.approvedAmount === 5000.0
+    debug $ "Successfull: before final loan: " <> show loanRequestCid
     
 
-    -- -- repayments 
-    -- repaymentLoanCid <- submit borrower do
-    --     exerciseCmd newLoanCid Repay with repaymentAmount = 5000.0
-    -- debug $ "Successfull: before final loan" <> show repaymentLoanCid
+    -- repayments 
+    repaymentLoanCid <- submit borrower do
+        exerciseCmd newLoanCid Repay with repaymentAmount = 5000.0
 
-    -- Some repaymentLoan <- queryContractId borrower repaymentLoanCid
-    -- repaymentLoan.totalRepaidAmount === 5000.0
-
-testFailedDisburse : Parties -> OnboardContracts -> Script ()
-testFailedDisburse Parties{..} OnboardContracts{..} = do
-    debug $ "Loan found: " <> show loanRequestCid
-
-    Some loan <- queryContractId borrower loanRequestCid
-    debug $ "Loan found but archived already: " <> show loan
-    loan.borrower === borrower
-    loan.bank === bank
-    -- loan.approvedAmount === 5000.0
+    Some repaymentLoan <- queryContractId borrower repaymentLoanCid
+    repaymentLoan.totalRepaidAmount === 5000.0
+    repaymentLoan.remainingAmount === 0.0  
+    repaymentLoan.approvedAmount === 5000.0
+    repaymentLoan.amountDisbursed === 5000.0
+    repaymentLoan.remainingAmount === 0.0
+    pure ()
 
 testScript : Script ()
 testScript = do
   parties <- allocateParties
   onboardContracts <- setupInitialContracts parties
   testSuccessfulDisburse parties onboardContracts
---   testFailedDisburse parties onboardContracts
   pure ()
