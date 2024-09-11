@@ -12,6 +12,7 @@ template Loan
     borrower : Party
     bank : Party
     approvedAmount : Decimal
+    amountDisbursed : Decimal
     remainingAmount : Decimal
     totalRepaidAmount : Decimal
     loanLimitCid : ContractId LoanLimit
@@ -38,9 +39,12 @@ template Loan
             None -> error "Borrower limit not found"
             Some limit -> do
             debug $ "Inside borrow limit: " <> show limit
-            let totalDisbursed = approvedAmount - remainingAmount + disburseAmount
-            assertMsg "Total disbursed amount would exceed borrower's limit" (totalDisbursed <= limit)
-            assertMsg "Total disbursed amount would exceed bank's limit" (totalDisbursed <= bankLimit)
+            let nextSumAmount = amountDisbursed + disburseAmount
+            let totalDisbursed = approvedAmount - nextSumAmount
+            -- total must be > 0
+            assertMsg "Total disbursed amount must be positive" (totalDisbursed > 0.0)
+            assertMsg "Total disbursed amount would exceed borrower's limit" (nextSumAmount <= limit)
+            assertMsg "Total disbursed amount would exceed bank's limit" (nextSumAmount <= bankLimit)
             debug $ "after: some check against global values: " <> show totalDisbursed
             
             -- Fetch the current Iou
@@ -81,10 +85,12 @@ template Loan
                 iouTransferCid <- exercise borrowerRemainingIouCid Iou_Transfer with 
                     newOwner = borrower
 
+                newIouCid <- exercise iouTransferCid IouTransfer_Accept
+
                 -- Update the Loan contract with the new remaining amount and bank IOU
                 create this with
                     remainingAmount = remainingAmount - disburseAmount
-                    tokenCid = borrowerIouCid
+                    tokenCid = newIouCid
 
     choice Repay : ContractId Loan
       with
@@ -121,6 +127,7 @@ template Loan
             -- archive the loan contract
             archive self
             create this with
+                totalRepaidAmount = totalRepaidAmount + repaymentAmount
                 tokenCid = iouBank
         else do
             (borrowerRemainingIouCid, repaymentIouCid) <- exercise borrowerIouCid Iou_Split with
