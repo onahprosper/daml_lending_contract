@@ -31,10 +31,10 @@ template Loan
         do
         assertMsg "Disburse amount must be positive" (disburseAmount > 0.0)
 
+        debug $ "before borrow limit" <> show disburseAmount
         loanLimit <- fetch loanLimitCid
         let borrowerLimit = M.lookup borrower loanLimit.borrowerLimits
         let bankLimit = loanLimit.maximumLimit
-        debug $ "before borrow limit" <> show borrowerLimit
         case borrowerLimit of
             None -> error "Borrower limit not found"
             Some limit -> do
@@ -48,7 +48,7 @@ template Loan
             
             -- Fetch the current Iou
             iou <- fetch tokenCid
-            (borrowerIouCid, borrowerIou) <- fetchByKey @Iou (bank, bank, "USD")
+            -- (borrowerIouCid, borrowerIou) <- fetchByKey @Iou (bank, bank, "USD")
             -- borrowerIou <- fetch borrowerIouCid
             
             debug $ "Disburse: ............" <> show disburseAmount
@@ -57,7 +57,7 @@ template Loan
             then do
                 debug $ "Disbursing entire remaining amount: " <> show totalRepaidAmount
                 -- Transfer the entire remaining amount to the borrower
-                iouTransferCid <- exercise borrowerIouCid Iou_Transfer with 
+                iouTransferCid <- exercise tokenCid Iou_Transfer with 
                     newOwner = borrower
                 -- Accept the transfer immediately
                 newIouCid <- exercise iouTransferCid IouTransfer_Accept
@@ -70,14 +70,14 @@ template Loan
             else do
                 debug $ "Disburse: splitting approved amount : " <> show disburseAmount
                 -- Split the Iou into two parts: one for the borrower and one for the bank
-                (borrowerRemainingIouCid, bankIouCid) <- exercise borrowerIouCid Iou_Split with
-                    splitAmount = disburseAmount
+                -- (borrowerRemainingIouCid, bankIouCid) <- exercise borrowerIouCid Iou_Split with
+                --     splitAmount = disburseAmount
                 
-                debug $ "Disburse: transferring split amount to borrower"
-                iouTransferCid <- exercise borrowerRemainingIouCid Iou_Transfer with 
+                iouTransferCid <- exercise tokenCid Iou_Transfer with 
                     newOwner = borrower
 
                 newIouCid <- exercise iouTransferCid IouTransfer_Accept
+                debug $ "Disburse: transferring split amount to borrower"
 
                 -- Update the Loan contract with the new remaining amount and bank IOU
                 create this with
@@ -91,50 +91,60 @@ template Loan
       do
         assertMsg "Repayment amount must be positive" (repaymentAmount > 0.0)
         assertMsg "Repayment amount exceeds remaining amount" (repaymentAmount <= approvedAmount)
+        debug $ "Repayment.kk...: " <> show repaymentRestrictionCid
+        restriction <- fetch repaymentRestrictionCid
+        let minRepaymentAmount = restriction.minRepaymentAmount
+        debug $ "Repayment.... 111000111: " <> show minRepaymentAmount
+
+        assertMsg "Repayment does not meet minimum requirement" (repaymentAmount >= minRepaymentAmount)
 
         -- Validate repayment using RepaymentRestriction contract
-        repaymentValid <- exercise repaymentRestrictionCid ValidateRepayment with
-          repaymentAmount = repaymentAmount
+        -- repaymentValid <- exercise repaymentRestrictionCid ValidateRepayment with
+        --   repaymentAmount = repaymentAmount
+        debug $ "Repayment.... 222222: " <> show minRepaymentAmount
 
-        assertMsg "Repayment does not meet minimum requirement" repaymentValid
+        -- assertMsg "Repayment does not meet minimum requirement" minRepaymentAmount
             
-        (borrowerIouCid, borrowerIou) <- fetchByKey @Iou (bank, borrower, "USD")
-        borrowerIou <- fetch borrowerIouCid
+        -- (borrowerIouCid, borrowerIou) <- fetchByKey @Iou (bank, borrower, "USD")
+        -- borrowerIou <- fetch borrowerIouCid
 
         -- Check if the borrower has sufficient balance
-        assertMsg "Insufficient balance for repayment" (borrowerIou.amount >= repaymentAmount)
+        -- assertMsg "Insufficient balance for repayment" (borrowerIou.amount >= repaymentAmount)
         
         let difference = approvedAmount - totalRepaidAmount -- no overflows
         let sumOfTotalRepaid = totalRepaidAmount + repaymentAmount
         let remainingAmount = approvedAmount - sumOfTotalRepaid
+
+
         if difference == repaymentAmount
         then do
             -- If the repayment amount equals the entire balance, just transfer the whole Iou
-            iouTransferCid <- exercise borrowerIouCid Iou_Transfer with 
+            iouTransferCid <- exercise tokenCid Iou_Transfer with 
                 newOwner = bank
             -- accept the transfer immediately and return the new Iou
             iouBank <- exercise iouTransferCid IouTransfer_Accept
-            debug $ "Repayment....: transferring split amount to borrower: " <> show borrowerIou.amount
+            -- debug $ "Repayment....: transferring split amount to borrower: " <> show borrowerIou.amount
 
             create this with
                 totalRepaidAmount = sumOfTotalRepaid
                 remainingAmount = remainingAmount
                 tokenCid = iouBank
         else do
-            (borrowerRemainingIouCid, repaymentIouCid) <- exercise borrowerIouCid Iou_Split with
-                splitAmount = repaymentAmount
+            -- (borrowerRemainingIouCid, repaymentIouCid) <- exercise borrowerIouCid Iou_Split with
+            --     splitAmount = repaymentAmount
             -- Transfer the repayment Iou to the bank
-            iouTransferCid <- exercise borrowerRemainingIouCid Iou_Transfer with newOwner = bank
+            iouTransferCid <- exercise tokenCid Iou_Transfer with newOwner = bank
             -- Accept the transfer for the repayment IOU
             iouBank <- exercise iouTransferCid IouTransfer_Accept
 
-            updatedBankIouCid <- exercise tokenCid Iou_Merge with
-                otherCid = iouBank
+            debug $ "Repayment... remainingAmount.: " <> show remainingAmount
+            debug $ "Repayment... difference.: " <> show difference
+            debug $ "Repayment. 3333... sumOfTotalRepaid: " <> show sumOfTotalRepaid
             
             create this with
                 totalRepaidAmount = sumOfTotalRepaid
                 remainingAmount = remainingAmount
-                tokenCid = updatedBankIouCid
+                tokenCid = iouBank
     
     choice CloseAndUpdateUtilizedAmount : ()
         with
