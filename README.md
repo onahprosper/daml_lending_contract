@@ -119,7 +119,7 @@ daml test
      - Ensures that attempts to disburse zero or negative amounts fail.
      - Prevents disbursement beyond the borrower's loan limit.
      - Successfully disburses the full amount when all checks are passed.
-    ![Loan Test Result](./Img/loan.png)
+    ![Loan Test Result](./Img/Loan.png)
    - **Repayment Tests**:
      - Validates full repayment and ensures that the total repaid amount is updated correctly.
      - Verifies that the loan contract is archived upon full repayment and that the `LoanLimit` is updated.
