@@ -19,7 +19,33 @@ Overall, the design emphasizes clarity, control, and compliance, providing a rob
 ## Code Design and Approach
 
 ### System Architecture and Entities
-![System Architecture](./Img/arch.png)
+```mermaid
+%%{init: {'flowchart': {'useMaxWidth': true, 'nodeSpacing': 400, 'rankSpacing': 5, 'fontSize': 12}}}%%
+graph TD
+    A[Start] --> B[Create LoanLimit Contract]
+    B --> C[Create RepaymentRestriction Contract]
+    C --> D[Create LoanRequest Contract]
+    D --> E{Approve Loan?}
+    E -->|Yes| F[Create Loan Contract]
+    E -->|No| Z[End]
+    F --> G{Disburse Loan?}
+    G -->|Yes| H[Update Loan Contract]
+    G -->|No| I{Repay Loan?}
+    H --> I
+    I -->|Yes| J[Check Repayment Amount]
+    I -->|No| Z
+    J --> K{Meets Minimum?}
+    K -->|Yes| L[Transfer Tokens]
+    K -->|No| I
+    L --> M[Update Loan Contract]
+    M --> N[Notify LoanLimit]
+    N --> O{Fully Repaid?}
+    O -->|Yes| P[Archive Loan Contract]
+    O -->|No| I
+    P --> Q[Update LoanLimit Contract]
+    Q --> Z
+```
+
 #### The main entities involved in this workflow are:
 
     •	Bank (Goldman Sachs): Approves loans, issues tokens, and manages disbursement.
