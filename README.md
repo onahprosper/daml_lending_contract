@@ -20,7 +20,7 @@ Overall, the design emphasizes clarity, control, and compliance, providing a rob
 
 ### System Architecture and Entities
 ```mermaid
-%%{init: {'flowchart': {'useMaxWidth': true, 'nodeSpacing': 400, 'rankSpacing': 5, 'fontSize': 12}}}%%
+%%{init: {'flowchart': {'useMaxWidth': true, 'nodeSpacing': 900, 'rankSpacing': 5, 'fontSize': 12}}}%%
 graph TD
     A[Start] --> B[Create LoanLimit Contract]
     B --> C[Create RepaymentRestriction Contract]
