@@ -19,7 +19,7 @@ Overall, the design emphasizes clarity, control, and compliance, providing a rob
 ## Code Design and Approach
 
 ### System Architecture and Entities
-
+![System Architecture](./Img/arch.png)
 #### The main entities involved in this workflow are:
 
     •	Bank (Goldman Sachs): Approves loans, issues tokens, and manages disbursement.
