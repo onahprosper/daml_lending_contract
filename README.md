@@ -1,5 +1,5 @@
 
-# Loan Repayment Workflow Documentation (Difficult)
+# Loan Repayment Workflow Documentation
 
 ## Task Overview
 
@@ -61,7 +61,7 @@ graph TD
 
 #### Test Scripts
 
-The DAML test scripts were created to simulate the entire loan approval, disbursement, and repayment process. These tests are crucial to ensure that all requirements are met.
+The DAML test scripts created to simulate the entire loan approval, disbursement, and repayment process. These tests are crucial to ensure that all requirements are met.
 
 #### Test Workflow:
 
@@ -73,7 +73,7 @@ The DAML test scripts were created to simulate the entire loan approval, disburs
 
 ### Step 1: Clone the GitHub Repository
 
-To start, clone the [project repository](https://github.com/OnahProsperity/Prosper_TakeHomeAssignment.git) from GitHub using the following command:
+To start, clone the [project repository](https://github.com/OnahProsperity/daml_lending_contract.git) from GitHub using the following command:
 ```sh
 git clone <repository_url>
 cd <repository_folder>****
@@ -100,7 +100,7 @@ Execute the tests to ensure everything is working correctly:
 daml test
 ```
 
-## Task Breakdown & Implementation:
+## Breakdown & Implementation:
 
 1. **RepaymentRestriction Template:**
    - [x] Implemented a `RepaymentRestriction` template that specifies the minimum amount required for each repayment.
@@ -167,5 +167,5 @@ daml test
 
 ## Conclusion:
 
-All functionality has been implemented and tested to meet the task's requirements. The system now supports both full and partial loan disbursements and repayments while enforcing repayment restrictions. The tests confirm that the system behaves as expected, with proper updates to loan amounts, token handling, and loan contract archiving.
+The system supports both full and partial loan disbursements and repayments while enforcing repayment restrictions. The tests confirm that the system behaves as expected, with proper updates to loan amounts, token handling, and loan contract archiving.
 
