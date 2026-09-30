@@ -1,11 +1,11 @@
 -- SPDX-License-Identifier: UNLICENSED
-module Test.DifficultQuestionTestPartialDisburseRepay where
+module Test.LendingPartialDisburseRepay where
 
 import Daml.Script
-import DifficultQuestionThree.Loan
-import DifficultQuestionThree.LoanRequest
+import Lending.Loan
+import Lending.LoanRequest
 import DA.Assert ((===))
-import Test.DifficultQuestionSetupContracts (OnboardContracts(..), Parties(..), allocateParties, setupInitialContracts)
+import Test.LendingSetupContracts (OnboardContracts(..), Parties(..), allocateParties, setupInitialContracts)
 
 testPartialDisburseRepay : Parties -> OnboardContracts -> Script ()
 testPartialDisburseRepay Parties{..} OnboardContracts{..} = do

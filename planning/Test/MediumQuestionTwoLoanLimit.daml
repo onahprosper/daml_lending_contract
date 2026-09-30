@@ -16,7 +16,7 @@ data Parties = Parties with
 
 allocateParties : Script Parties
 allocateParties = do
-  bank <- allocateParty "Goldman Sachs"
+  bank <- allocateParty "Bank"
   borrower <- allocateParty "Borrower"
   cb <- allocateParty "Central Bank"
   pure Parties{..}

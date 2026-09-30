@@ -3,7 +3,7 @@
 
 -- NOTE THIS MODULE IS GENERATED. WITHOUT ANY UPDATE, SO THERE IS NO NEED FOR TEST
 -- BEGIN_IOU_MODULE_NAME
-module DifficultQuestionThree.Token where
+module Lending.Token where
 -- END_IOU_MODULE_NAME
 
 type IouCid = ContractId Iou

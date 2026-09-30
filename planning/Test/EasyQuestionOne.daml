@@ -17,7 +17,7 @@ data Parties = Parties with
 allocateParties : Script Parties
 allocateParties = do
     alice <- allocateParty "Alice"
-    bank <- allocateParty "Goldman Sachs"
+    bank <- allocateParty "Bank"
     pure Parties{..}
 
 onboard : Parties -> Script OnboardBorrower

@@ -48,7 +48,7 @@ graph TD
 
 #### The main entities involved in this workflow are:
 
-    •	Bank (Goldman Sachs): Approves loans, issues tokens, and manages disbursement.
+    •	Bank: Approves loans, issues tokens, and manages disbursement.
     •	Borrower: Requests a loan, receives disbursements in stages, and is responsible for repayment.
     •	Central Bank: Enforces rules such as repayment restrictions and oversees loan limits.
 

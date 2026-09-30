@@ -1,11 +1,11 @@
 -- SPDX-License-Identifier: UNLICENSED
-module Test.DifficultQuestionSetupContracts where
+module Test.LendingSetupContracts where
 
 import Daml.Script
-import DifficultQuestionThree.Token
-import DifficultQuestionThree.LoanLimit
-import DifficultQuestionThree.LoanRequest
-import DifficultQuestionThree.RepaymentRestriction
+import Lending.Token
+import Lending.LoanLimit
+import Lending.LoanRequest
+import Lending.RepaymentRestriction
 import DA.Map qualified as M
 
 data OnboardContracts = OnboardContracts with
@@ -21,7 +21,7 @@ data Parties = Parties with
 
 allocateParties : Script Parties
 allocateParties = do
-    bank <- allocateParty "Goldman Sachs"
+    bank <- allocateParty "Bank"
     borrower <- allocateParty "Borrower"
     cb <- allocateParty "Central Bank"
     pure Parties{..}

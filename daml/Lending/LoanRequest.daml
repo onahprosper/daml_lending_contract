@@ -1,10 +1,10 @@
 -- SPDX-License-Identifier: MIT
-module DifficultQuestionThree.LoanRequest where
+module Lending.LoanRequest where
 
-import DifficultQuestionThree.LoanLimit
-import DifficultQuestionThree.Token (IouCid)
-import DifficultQuestionThree.Loan
-import DifficultQuestionThree.RepaymentRestriction
+import Lending.LoanLimit
+import Lending.Token (IouCid)
+import Lending.Loan
+import Lending.RepaymentRestriction
 
 template LoanRequest
   with

@@ -1,11 +1,11 @@
 -- SPDX-License-Identifier: MIT
 
-module DifficultQuestionThree.Loan where
+module Lending.Loan where
 
 import DA.Map qualified as M
-import DifficultQuestionThree.LoanLimit
-import DifficultQuestionThree.Token (Iou_Transfer(..), IouTransfer_Accept(..), IouCid,)
-import DifficultQuestionThree.RepaymentRestriction
+import Lending.LoanLimit
+import Lending.Token (Iou_Transfer(..), IouTransfer_Accept(..), IouCid,)
+import Lending.RepaymentRestriction
 
 template Loan
   with

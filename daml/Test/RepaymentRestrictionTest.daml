@@ -1,7 +1,7 @@
 module Test.RepaymentRestrictionTest where
 
 import Daml.Script
-import DifficultQuestionThree.RepaymentRestriction
+import Lending.RepaymentRestriction
 
 testRepaymentRestriction : Script ()
 testRepaymentRestriction = do

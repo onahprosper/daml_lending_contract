@@ -1,4 +1,4 @@
-module DifficultQuestionThree.RepaymentRestriction where
+module Lending.RepaymentRestriction where
 
 template RepaymentRestriction
     with
