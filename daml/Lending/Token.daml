@@ -1,7 +1,9 @@
 -- Copyright (c) 2024 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
 -- SPDX-License-Identifier: Apache-2.0
 
--- NOTE THIS MODULE IS GENERATED. WITHOUT ANY UPDATE, SO THERE IS NO NEED FOR TEST
+-- An Iou is a holding: `amount` is the quantity `owner` has a claim on.
+-- Split and Merge conserve that quantity. Transfer moves a whole holding,
+-- so a partial payment has to split the exact amount off first.
 -- BEGIN_IOU_MODULE_NAME
 module Lending.Token where
 -- END_IOU_MODULE_NAME
@@ -20,10 +22,6 @@ template Iou
   where
 -- BEGIN_IOU_TEMPLATE_CONDITIONS
     ensure amount > 0.0
-    key (issuer, owner, currency) : (Party, Party, Text)  -- Define key
-    maintainer key._1  -- The `issuer` will maintain the key
-
-
     signatory issuer, owner
 -- END_IOU_TEMPLATE_CONDITIONS
 -- BEGIN_IOU_TEMPLATE_OBSERVERS
@@ -37,6 +35,8 @@ template Iou
         splitAmount: Decimal
       controller owner
       do
+        assertMsg "Split amount must be positive and leave a remainder"
+          (splitAmount > 0.0 && splitAmount < amount)
         let restAmount = amount - splitAmount
         splitCid <- create this with amount = splitAmount
         debug $ "Splitting IOU: " <> show splitAmount <> " to " <> show restAmount
@@ -106,6 +106,37 @@ template IouTransfer
     choice IouTransfer_Accept : IouCid
       controller newOwner
       do
+        -- Keep the previous owner as an observer. Daml 3 does not let a
+        -- party fetch a contract they only witnessed, and incremental
+        -- repay needs the borrower to see the Iou after it returns to the bank.
+        let nextObservers = filter (/= newOwner) (iou.owner :: iou.observers)
         create iou with
           owner = newOwner
-          observers = []
+          observers = nextObservers
+
+-- Take `qty` out of a holding. Returns the piece of size `qty` and the
+-- remainder still owned by the current owner. The remainder is None when
+-- `qty` is the whole holding, because a zero-amount Iou cannot exist.
+splitOff : IouCid -> Decimal -> Update (IouCid, Optional IouCid)
+splitOff cid qty = do
+  iou <- fetch cid
+  assertMsg "Quantity must be positive" (qty > 0.0)
+  assertMsg "Quantity exceeds the holding" (qty <= iou.amount)
+  if qty == iou.amount
+    then pure (cid, None)
+    else do
+      (pieceCid, restCid) <- exercise cid Iou_Split with splitAmount = qty
+      pure (pieceCid, Some restCid)
+
+-- Move a whole holding to `newOwner`. The amount does not change.
+transferHolding : IouCid -> Party -> Update IouCid
+transferHolding cid newOwner = do
+  proposalCid <- exercise cid Iou_Transfer with newOwner = newOwner
+  exercise proposalCid IouTransfer_Accept
+
+-- Add `incoming` to a holding already owned by the same party.
+-- With no existing holding, `incoming` is the position.
+creditHolding : Optional IouCid -> IouCid -> Update IouCid
+creditHolding existing incoming = case existing of
+  None -> pure incoming
+  Some cid -> exercise cid Iou_Merge with otherCid = incoming

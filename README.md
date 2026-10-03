@@ -78,27 +78,37 @@ To start, clone the [project repository](https://github.com/OnahProsperity/daml_
 git clone <repository_url>
 cd <repository_folder>****
 ```
-### Step 2: Set Up the DAML Environment
-Ensure you have the DAML SDK installed. You can download and install it from [here](https://docs.daml.com/getting-started/installation.html).
-
-Once installed, run the following command to verify that DAML is set up correctly:
+### Step 2: Set Up the Daml Environment
+This project targets **Daml SDK 3.5** and is built with `dpm`, the Digital Asset Package Manager (the replacement for the legacy `daml` assistant). Install `dpm` by following the [official instructions](https://docs.digitalasset.com/build/3.5/dpm/dpm.html), make sure `~/.dpm/bin` is on your `PATH`, then install the SDK version pinned in `daml.yaml`:
 
 ```sh
-daml version
+dpm version          # lists available / installed SDKs
+dpm install          # installs the sdk-version from daml.yaml (3.5.12)
 ```
+
+A JDK 11 or newer is required to run the test scripts.
+
 ### Step 3: Build the Project
 Navigate to the project directory and build the project using the following command:
 
 ```sh
-daml build
+dpm build
 ```
 
 ### Step 4: Run the Tests
 Execute the tests to ensure everything is working correctly:
 
 ```sh
-daml test
+dpm test
 ```
+
+`dpm test` prints a pass/fail summary. The contract tables shown below come from the compiler's table view. To regenerate them (and the PNGs under `Img/`) run:
+
+```sh
+scripts/test-report.sh
+```
+
+The script runs each test file separately, writes the HTML table and transaction views to `test-report/` (git-ignored), and screenshots one table per template into `Img/` using headless Chromium. Use `SKIP_PNG=1` to produce only the HTML, or `REPORT_SOURCE=LendingSuccessLoan` to screenshot a different script. The same views are available interactively in Daml Studio (`dpm studio`) via the **Script results** code lens above each script.
 
 ## Breakdown & Implementation:
 
@@ -138,6 +148,8 @@ daml test
 
 ## Detailed Breakdown of Test Coverage:
 
+The tables below are the final ledger state of the partial disbursement and repayment script (`daml/Test/LendingPartialDisburseRepay.daml`), one table per template. Struck-through rows are archived contracts; the right-hand columns show each party's relationship to the contract (**S** signatory, **O** observer, **D** divulged).
+
 ### 1. Full Disbursement & Repayment Test (`testSuccessfulDisburse`)
    - **Loan Request Validation**: 
      - Verifies the borrower and bank's involvement in the loan request and checks the requested loan amount.
@@ -145,16 +157,13 @@ daml test
      - Ensures that attempts to disburse zero or negative amounts fail.
      - Prevents disbursement beyond the borrower's loan limit.
      - Successfully disburses the full amount when all checks are passed.
-    ![Loan Test Result](./Img/Loan.png)
    - **Repayment Tests**:
      - Validates full repayment and ensures that the total repaid amount is updated correctly.
      - Verifies that the loan contract is archived upon full repayment and that the `LoanLimit` is updated.
-   ![Loan Test Result](./Img/LoanRequest.png)
-   ![Loan Test Result](./Img/LoanLimit.png)
+
 ### 2. Partial Disbursement & Repayment Test (`testPartialDisburseRepay`)
    - **Loan Request Validation**: 
      - Same as the full disbursement test.
-    ![Loan Test Result](./Img/RepaymentRestriction.png)
    - **Partial Disbursement Tests**:
      - Verifies correct handling of partial disbursements in multiple stages.
      - Ensures that the total disbursed amount is updated correctly after each disbursement.
@@ -162,8 +171,32 @@ daml test
      - Validates incremental repayments.
      - Ensures that the total repaid amount is updated correctly after each repayment.
      - Checks that the repayment adheres to the minimum repayment restrictions defined in the `RepaymentRestriction` contract.
-![Loan Test Result](./Img/Token.png)
-![Loan Test Result](./Img/TokenTransfer.png)
+
+### Ledger state after `testPartialDisburseRepay`
+
+**LoanRequest** — created by the borrower, archived when the bank exercises `Approve`.
+
+![LoanRequest contracts](./Img/LoanRequest.png)
+
+**Loan** — three partial disbursements (2000, 2000, 1000) followed by three repayments (1000, 2000, 2000). The active row shows `amountDisbursed = 5000`, `totalRepaidAmount = 5000`, `remainingAmount = 0`.
+
+![Loan contracts](./Img/Loan.png)
+
+**LoanLimit** — signed by the Central Bank; the bank's `UpdateLimit` adds the borrower to `borrowerLimits`.
+
+![LoanLimit contracts](./Img/LoanLimit.png)
+
+**RepaymentRestriction** — minimum repayment of 100, fetched on every `Repay`.
+
+![RepaymentRestriction contracts](./Img/RepaymentRestriction.png)
+
+**Iou** — the cash holding. A disbursement splits the exact amount off the bank's holding and transfers only that piece; a repayment splits the exact amount off the borrower's holding and merges it back into the bank's. After this run the borrower holds nothing and the bank's 10000 holding is whole again.
+
+![Iou contracts](./Img/Iou.png)
+
+**IouTransfer** — the two-step transfer proposals, each archived by `IouTransfer_Accept`.
+
+![IouTransfer contracts](./Img/IouTransfer.png)
 
 ## Conclusion:
 

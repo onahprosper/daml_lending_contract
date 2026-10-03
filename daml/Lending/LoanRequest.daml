@@ -23,6 +23,11 @@ template LoanRequest
       do
         loanLimit <- fetch loanLimitCid
         assertMsg "Requested amount exceeds bank's limit" (requestedAmount <= loanLimit.maximumLimit)
+        iou <- fetch tokenCid
+        assertMsg "Loan cash must be issued and held by the bank"
+          (iou.issuer == bank && iou.owner == bank)
+        assertMsg "Bank holding does not cover the requested amount"
+          (iou.amount >= requestedAmount)
         create Loan with
           borrower = borrower
           bank = bank
@@ -31,5 +36,6 @@ template LoanRequest
           remainingAmount = 0.0
           totalRepaidAmount = 0.0
           loanLimitCid = loanLimitCid
-          tokenCid = tokenCid
+          bankHoldingCid = Some tokenCid
+          borrowerHoldingCid = None
           repaymentRestrictionCid = repaymentRestrictionCid

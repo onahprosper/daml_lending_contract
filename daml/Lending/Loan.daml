@@ -4,7 +4,7 @@ module Lending.Loan where
 
 import DA.Map qualified as M
 import Lending.LoanLimit
-import Lending.Token (Iou_Transfer(..), IouTransfer_Accept(..), IouCid,)
+import Lending.Token (IouCid, splitOff, transferHolding, creditHolding)
 import Lending.RepaymentRestriction
 
 template Loan
@@ -16,7 +16,11 @@ template Loan
     remainingAmount : Decimal
     totalRepaidAmount : Decimal
     loanLimitCid : ContractId LoanLimit
-    tokenCid : IouCid
+    -- Cash still held by the bank. None once the issued holding is fully disbursed.
+    bankHoldingCid : Optional IouCid
+    -- Cash the borrower currently holds. None before the first disbursement
+    -- and again once that cash has been fully repaid.
+    borrowerHoldingCid : Optional IouCid
     repaymentRestrictionCid : ContractId RepaymentRestriction
   where
     signatory borrower, bank
@@ -46,16 +50,22 @@ template Loan
             assertMsg "Total disbursed amount would exceed bank's limit" (nextSumAmount <= bankLimit)
             assertMsg "Total disbursed amount exceeds approved amount" (totalDisbursed >= 0.0)
 
-            -- Transfer the entire remaining amount to the borrower
-            iouTransferCid <- exercise tokenCid Iou_Transfer with 
-                newOwner = borrower
-            -- Accept the transfer immediately
-            newIouCid <- exercise iouTransferCid IouTransfer_Accept
+            bankCid <- case bankHoldingCid of
+              None -> error "Bank has no holding left to disburse"
+              Some cid -> pure cid
+            -- Move only `disburseAmount`. The bank keeps the remainder.
+            (pieceCid, bankRest) <- splitOff bankCid disburseAmount
+            movedCid <- transferHolding pieceCid borrower
+            newBorrowerCid <- creditHolding borrowerHoldingCid movedCid
+            held <- fetch newBorrowerCid
+            assertMsg "Disbursed cash must be owned by the borrower" (held.owner == borrower)
+            assertMsg "Borrower holding must equal principal still outstanding"
+              (held.amount == nextSumAmount - totalRepaidAmount)
 
-            -- Update the Loan contract with zero remaining amount
             create this with
                 amountDisbursed = nextSumAmount
-                tokenCid = newIouCid
+                bankHoldingCid = bankRest
+                borrowerHoldingCid = Some newBorrowerCid
 
     choice Repay : ContractId Loan
       with
@@ -73,16 +83,31 @@ template Loan
         let remainingAmount = approvedAmount - sumOfAmountRepaid -- remaining amount after repayment can be negative
         assertMsg "Remaining amount cannot be negative" (remainingAmount >= 0.0)
 
-        -- If the repayment amount equals the entire balance, just transfer the whole Iou
-        iouTransferCid <- exercise tokenCid Iou_Transfer with 
-            newOwner = bank
-        -- accept the transfer immediately and return the new Iou
-        iouBank <- exercise iouTransferCid IouTransfer_Accept
-        
+        borrowerCid <- case borrowerHoldingCid of
+          None -> error "Borrower has no holding to repay"
+          Some cid -> pure cid
+        -- Move only `repaymentAmount` back to the bank and merge it into
+        -- the bank's remaining holding. A zero-amount holding is not left behind.
+        (pieceCid, borrowerRest) <- splitOff borrowerCid repaymentAmount
+        movedCid <- transferHolding pieceCid bank
+        newBankCid <- creditHolding bankHoldingCid movedCid
+        bankHeld <- fetch newBankCid
+        assertMsg "Repaid cash must be owned by the bank" (bankHeld.owner == bank)
+        case borrowerRest of
+          None ->
+            assertMsg "A full repayment must clear the borrower holding"
+              (amountDisbursed == sumOfAmountRepaid)
+          Some restCid -> do
+            rest <- fetch restCid
+            assertMsg "Outstanding cash must stay with the borrower" (rest.owner == borrower)
+            assertMsg "Borrower holding must equal principal still outstanding"
+              (rest.amount == amountDisbursed - sumOfAmountRepaid)
+
         create this with
             totalRepaidAmount = sumOfAmountRepaid
             remainingAmount = remainingAmount
-            tokenCid = iouBank
+            borrowerHoldingCid = borrowerRest
+            bankHoldingCid = Some newBankCid
 
 
     choice CloseAndUpdateUtilizedAmount : ()

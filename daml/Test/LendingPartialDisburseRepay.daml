@@ -20,20 +20,34 @@ testPartialDisburseRepay Parties{..} OnboardContracts{..} = do
         exerciseCmd loanRequestCid Approve
 
     -- Partial disbursement
-    newLoanCid <- submitMulti [bank, borrower] [] do
+    newLoanCid <- submit (actAs [bank, borrower]) do
         exerciseCmd loanCid Disburse with disburseAmount = 2000.0
 
     -- Query the new Loan contract
     Some loan <- queryContractId borrower newLoanCid
     loan.amountDisbursed === 2000.0
+    -- 2000 of the 10000 holding moved; the bank keeps 8000.
+    Some borrowerCid <- pure loan.borrowerHoldingCid
+    Some borrowerIou <- queryContractId borrower borrowerCid
+    borrowerIou.owner === borrower
+    borrowerIou.amount === 2000.0
+    Some bankCid <- pure loan.bankHoldingCid
+    Some bankIou <- queryContractId bank bankCid
+    bankIou.owner === bank
+    bankIou.amount === 8000.0
+
+    -- The borrower cannot repay more cash than they hold, even though 3000
+    -- is still within the approved loan amount.
+    submitMustFail borrower do
+        exerciseCmd newLoanCid Repay with repaymentAmount = 3000.0
 
 
     -- Partial disbursement
-    newLoanCid2 <- submitMulti [bank, borrower] [] do
+    newLoanCid2 <- submit (actAs [bank, borrower]) do
         exerciseCmd newLoanCid Disburse with disburseAmount = 2000.0
 
     -- Partial disbursement
-    newLoanCid3 <- submitMulti [bank, borrower] [] do
+    newLoanCid3 <- submit (actAs [bank, borrower]) do
         exerciseCmd newLoanCid2 Disburse with disburseAmount = 1000.0
     
     -- Partial repayment
@@ -60,6 +74,12 @@ testPartialDisburseRepay Parties{..} OnboardContracts{..} = do
     repaymentLoan.totalRepaidAmount === 5000.0
     repaymentLoan.remainingAmount === 0.0
     repaymentLoan.amountDisbursed === 5000.0
+    -- Fully repaid: the borrower holds nothing, and the bank's holding is whole again.
+    repaymentLoan.borrowerHoldingCid === None
+    Some bankCidFinal <- pure repaymentLoan.bankHoldingCid
+    Some bankIouFinal <- queryContractId bank bankCidFinal
+    bankIouFinal.owner === bank
+    bankIouFinal.amount === 10000.0
     debug $ "successfully tested partial disburse and repay"
 
     pure ()

@@ -19,24 +19,30 @@ testSuccessfulDisburse Parties{..} OnboardContracts{..} = do
         exerciseCmd loanRequestCid Approve
 
     -- Attempt to disburse more than the remaining amount
-    submitMultiMustFail [bank, borrower] [] do
+    submitMustFail (actAs [bank, borrower]) do
         exerciseCmd loanCid Disburse with disburseAmount = 0.0
-    
+
     -- Attempt to disburse a negative amount
-    submitMultiMustFail [bank, borrower] [] do
+    submitMustFail (actAs [bank, borrower]) do
         exerciseCmd loanCid Disburse with disburseAmount = -1000.0
 
     -- Attempt to disburse more than the borrower's limit
-    submitMultiMustFail [bank, borrower] [] do
+    submitMustFail (actAs [bank, borrower]) do
         exerciseCmd loanCid Disburse with disburseAmount = 11000.0
 
-    newLoanCid <- submitMulti [bank, borrower] [] do
+    newLoanCid <- submit (actAs [bank, borrower]) do
         exerciseCmd loanCid Disburse with disburseAmount = 5000.0
     pure ()
 
     Some loan <- queryContractId borrower newLoanCid
     loan.remainingAmount === 0.0
-    loan.approvedAmount === 5000.0    
+    loan.approvedAmount === 5000.0
+    Some borrowerCid <- pure loan.borrowerHoldingCid
+    Some borrowerIou <- queryContractId borrower borrowerCid
+    borrowerIou.amount === 5000.0
+    Some bankCid <- pure loan.bankHoldingCid
+    Some bankIou <- queryContractId bank bankCid
+    bankIou.amount === 5000.0    
 
     -- repayments 
     repaymentLoanCid <- submit borrower do
@@ -48,6 +54,10 @@ testSuccessfulDisburse Parties{..} OnboardContracts{..} = do
     repaymentLoan.approvedAmount === 5000.0
     repaymentLoan.amountDisbursed === 5000.0
     repaymentLoan.remainingAmount === 0.0
+    repaymentLoan.borrowerHoldingCid === None
+    Some bankCidFinal <- pure repaymentLoan.bankHoldingCid
+    Some bankIouFinal <- queryContractId bank bankCidFinal
+    bankIouFinal.amount === 10000.0
     pure ()
 
 testScript : Script ()
